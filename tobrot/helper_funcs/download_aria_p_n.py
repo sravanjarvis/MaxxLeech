@@ -24,10 +24,10 @@ from tobrot import (
     AUTH_CHANNEL,
     DOWNLOAD_LOCATION,
     EDIT_SLEEP_TIME_OUT,
-    CUSTOM_FILE_NAME
+    CUSTOM_FILE_NAME,
+    STRIP_FILE_NAMES
 )
-from pyrogram.errors import MessageNotModified
-from pyrogram.types import (
+from pyrogram import (
 	InlineKeyboardButton,
 	InlineKeyboardMarkup,
 	Message
@@ -51,7 +51,6 @@ async def aria_start():
     aria2_daemon_start_cmd.append("--rpc-max-request-size=1024M")
     aria2_daemon_start_cmd.append("--seed-ratio=0.0")
     aria2_daemon_start_cmd.append("--seed-time=1")
-    aria2_daemon_start_cmd.append("--max-overall-upload-limit=1K")
     aria2_daemon_start_cmd.append("--split=10")
     #aria2_daemon_start_cmd.append(f"--bt-stop-timeout={MAX_TIME_TO_WAIT_FOR_TORRENTS_TO_START}")
     #
@@ -87,7 +86,7 @@ def add_magnet(aria_instance, magnetic_link, c_file_name):
             options=options
         )
     except Exception as e:
-        return False, "**FAILED** \n" + str(e) + " \nPlease do not send SLOW links. Read /help"
+        return False, "**FAILED** \n" + str(e) + " \nPlease do not send SLOW links. Read #help"
     else:
         return True, "" + download.gid + ""
 
@@ -105,7 +104,7 @@ def add_torrent(aria_instance, torrent_file_path):
                 position=None
             )
         except Exception as e:
-            return False, "**FAILED** \n" + str(e) + " \nPlease do not send SLOW links. Read /help"
+            return False, "**FAILED** \n" + str(e) + " \nPlease do not send SLOW links. Read #help"
         else:
             return True, "" + download.gid + ""
     else:
@@ -126,7 +125,7 @@ def add_url(aria_instance, text_url, c_file_name):
             options=options
         )
     except Exception as e:
-        return False, "**FAILED** \n" + str(e) + " \nPlease do not send SLOW links. Read /help"
+        return False, "**FAILED** \n" + str(e) + " \nPlease do not send SLOW links. Read #help"
     else:
         return True, "" + download.gid + ""
 
@@ -207,6 +206,13 @@ async def call_apropriate_function(
             to_upload_file = f"{CUSTOM_FILE_NAME}{to_upload_file}"
         else:
             to_upload_file = to_upload_file
+            
+    if STRIP_FILE_NAMES:
+        striped_file_name = f"{to_upload_file}"
+        for fname in STRIP_FILE_NAMES.split("|"):
+            striped_file_name=striped_file_name.replace(fname,"").strip()
+        os.rename(to_upload_file, striped_file_name)
+        to_upload_file = striped_file_name
 
     if cstom_file_name:
         os.rename(to_upload_file, cstom_file_name)
@@ -244,7 +250,7 @@ async def call_apropriate_function(
             message_to_send = mention_req_user + message_to_send
             message_to_send = message_to_send + "\n\n" + "#uploads"
         else:
-            message_to_send = "<i>FAILED</i> to upload files. 😞😞"
+            message_to_send = "<b>FAILED to upload files. 😞😞</b>"
         await user_message.reply_text(
             text=message_to_send,
             quote=True,
@@ -349,6 +355,7 @@ async def call_apropriate_function_g(
             user_message,
             user_id
         )
+    return to_upload_file
 #
 async def call_apropriate_function_t(
     to_upload_file_g,
@@ -444,26 +451,22 @@ async def check_progress_for_dl(aria2, gid, event, previous_message):
                 except:
                     pass
                 #
+                msg = f"\n**○ Downloading File:** `{downloading_dir_name}`"
+                msg += f"\n**○ Speed: {file.download_speed_string()} 🔽 / {file.upload_speed_string()} 🔼**"
+                msg += f"\n**○ Progress: {file.progress_string()}**"
+                msg += f"\n**○ Total Size: {file.total_length_string()}**"
+
                 if is_file is None :
-                   msgg = f"Conn: {file.connections} <b>|</b> GID: <code>/cancel {gid}</code>"
+                   msg += f"\n<b>Connections:</b> {file.connections}"
                 else :
-                   msgg = f"P: {file.connections} | S: {file.num_seeders} <b>|</b> GID: <code>/cancel {gid}</code>"
-                msg = f"\n`{downloading_dir_name}`"
-                msg += f"\n<b>Speed</b>: {file.download_speed_string()}"
-                msg += f"\n<b>Status</b>: {file.progress_string()} of {file.total_length_string()} <b>|</b> {file.eta_string()} <b>|</b> {msgg}"
-                #msg += f"\nSize: {file.total_length_string()}"
+                   msg += f"\n<b>Info:</b>[ P : {file.connections} || S : {file.num_seeders} ]"
 
-                #if is_file is None :
-                   #msg += f"\n<b>Conn:</b> {file.connections}, GID: <code>/cancel {gid}</code>"
-                #else :
-                   #msg += f"\n<b>Info:</b>[ P : {file.connections} | S : {file.num_seeders} ], GID: <code>{gid}</code>"
-
-                #msg += f"\nStatus: {file.status}"
-                #msg += f"\nETA: {file.eta_string()}"
-                #msg += f"\nGID: <code>/cancel {gid}</code>"
+                # msg += f"\nStatus: {file.status}"
+                msg += f"\nETA: {file.eta_string()}"
+                msg += f"\nGID: <code>{gid}</code>"
                 inline_keyboard = []
                 ikeyboard = []
-                ikeyboard.append(InlineKeyboardButton("🚫Cancel the Task🚫", callback_data=(f"cancel {gid}").encode("UTF-8")))
+                ikeyboard.append(InlineKeyboardButton("Cancel 🚫", callback_data=(f"cancel {gid}").encode("UTF-8")))
                 inline_keyboard.append(ikeyboard)
                 reply_markup = InlineKeyboardMarkup(inline_keyboard)
                 #msg += reply_markup
@@ -480,30 +483,21 @@ async def check_progress_for_dl(aria2, gid, event, previous_message):
             await check_progress_for_dl(aria2, gid, event, previous_message)
         else:
             await asyncio.sleep(EDIT_SLEEP_TIME_OUT)
-            await event.edit(f"Downloaded Successfully: `{file.name}`")
+            await event.edit(f"File Downloaded Successfully: `{file.name}`")
             return True
-    except aria2p.client.ClientException:
-        pass
-    except MessageNotModified:
-        pass
-    except RecursionError:
-        file.remove(force=True)
-        await event.edit(
-            "Download Auto Canceled :\n\n"
-            "Your Torrent/Link is Dead.".format(
-                file.name
-            )
-        )
-        return False
     except Exception as e:
         LOGGER.info(str(e))
         if " not found" in str(e) or "'file'" in str(e):
-            await event.edit("Download Canceled :\n<code>{}</code>".format(file.name))
+            await event.edit("Download Canceled")
+            return False
+        elif " depth exceeded" in str(e):
+            file.remove(force=True)
+            await event.edit("Download Auto Canceled\nYour Torrent/Link is Dead.")
             return False
         else:
             LOGGER.info(str(e))
-            await event.edit("<u>error</u> :\n<code>{}</code> \n\n#error".format(str(e)))
-            return False
+            await event.edit("<u>error</u> :\n`{}` \n\n#error".format(str(e)))
+            return
 # https://github.com/jaskaranSM/UniBorg/blob/6d35cf452bce1204613929d4da7530058785b6b1/stdplugins/aria.py#L136-L164
 
 
