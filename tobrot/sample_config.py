@@ -3,7 +3,6 @@ import os
 
 class Config(object):
     # get a token from @BotFather
-    CHANNEL_URL = os.environ.get("CHANNEL_URL", "")
     TG_BOT_TOKEN = os.environ.get("TG_BOT_TOKEN", "")
     # The Telegram API things
     APP_ID = int(os.environ.get("APP_ID", 12345))
@@ -50,10 +49,6 @@ class Config(object):
     SAVE_THUMBNAIL = os.environ.get("SAVE_THUMBNAIL", "savethumbnail")
     CLEAR_THUMBNAIL = os.environ.get("CLEAR_THUMBNAIL", "clearthumbnail")
     UPLOAD_AS_DOC = os.environ.get("UPLOAD_AS_DOC", "False")
-    STRIP_FILE_NAMES = os.environ.get("STRIP_FILE_NAMES", "")
     PYTDL_COMMAND_G = os.environ.get("PYTDL_COMMAND_G", "pytdl")
     LOG_COMMAND = os.environ.get("LOG_COMMAND", "log")
-    SPLIT_COMMAND = os.environ.get("SPLIT_COMMAND", "split")
-    RENAME_COMMAND = os.environ.get("RENAME_COMMAND", "rename")
-    UPLOAD_AS_VIDEO = os.environ.get("UPLOAD_AS_VIDEO", "uploadasvideo")
-    UPLOAD_AS_DOC = os.environ.get("UPLOAD_AS_DOC", "uploadasdoc")
+    CLONE_COMMAND_G = os.environ.get("CLONE_COMMAND_G", "gclone")
